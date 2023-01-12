@@ -14,7 +14,8 @@ export default function Head({
     <NextHead>
       <title>{metaTitle}</title>
 
-      <link rel='icon' href='/favicon.ico' />
+      <link rel='icon' type='image/png' href='/korras-favicon.png' />
+
       <meta name='description' content={metaDescription} />
       <meta name='viewport' content='width=device-width, initial-scale=1' />
     </NextHead>
