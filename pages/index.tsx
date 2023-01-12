@@ -1,10 +1,18 @@
 import type { NextPage } from 'next'
 
+import Header from '@/components/ui/header'
+import Head from '@/components/head'
+import EditorScreen from 'src/screens/editor-wrapper'
+
 const Home: NextPage = () => {
   return (
-    <div className='flex h-screen w-screen items-center justify-center'>
-      <span className='hover:text-blue-500'>Home</span>
-    </div>
+    <>
+      <Head />
+
+      <Header />
+
+      <EditorScreen />
+    </>
   )
 }
 
