@@ -1,14 +1,16 @@
+import Head from '@/components/head'
 import Header from '@/components/ui/header'
 
 const SignIn = () => {
   return (
     <>
+      <Head title='Sign in' />
+
       <Header />
 
-      <main className='flex justify-center'>
-        <div className='m-auto flex w-80 max-w-lg flex-col justify-between p-3'>
-          <div className='flex flex-col space-y-4'>Sign in</div>
-        </div>
+      <main className='flex flex-col items-center gap-4 py-12'>
+        <h1 className='text-2xl font-semibold'>Sign in</h1>
+        <p>Coming soon ...</p>
       </main>
     </>
   )
