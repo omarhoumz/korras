@@ -1,7 +1,11 @@
 import { Cairo, Inter } from '@next/font/google'
 import type { AppProps } from 'next/app'
 
+import { initializeFirebase } from '@/lib/firebase/init'
+
 import '../styles/globals.css'
+
+initializeFirebase()
 
 const inter = Inter({ subsets: ['latin'] })
 const cairo = Cairo({ subsets: ['arabic'] })
