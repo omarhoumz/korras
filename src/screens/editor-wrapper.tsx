@@ -1,6 +1,8 @@
 import { format } from 'date-fns'
+import type { User } from 'firebase/auth'
 import type {
   DocumentData,
+  Firestore,
   QueryDocumentSnapshot,
   SnapshotOptions,
 } from 'firebase/firestore'
@@ -13,7 +15,9 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { ChangeEvent, useEffect, useState } from 'react'
+import { useAuthState } from 'react-firebase-hooks/auth'
 
+import { auth } from '@/lib/firebase/auth'
 import { db } from '@/lib/firebase/db'
 import { useLocalStorage } from '@/lib/use-local-storage'
 
@@ -45,7 +49,43 @@ const entryConverter = {
 
 const ENTRIES_COLLECTION = 'entries'
 
+function EntriesManager(
+  db: Firestore,
+  user: User | null | undefined,
+  collectionName: string,
+) {
+  if (!user) {
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      addEntry: async () => {},
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      updateEntry: async () => {},
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      deleteEntry: async () => {},
+    }
+  }
+
+  const userId = user.uid
+
+  return {
+    addEntry: async (date: string, content: string) => {
+      const entryDoc = doc(db, 'users', userId, collectionName, date)
+      return setDoc(entryDoc, { content: content })
+    },
+    updateEntry: async (date: string, content: string) => {
+      const entryDoc = doc(db, 'users', userId, collectionName, date)
+      return updateDoc(entryDoc, { content: content })
+    },
+    deleteEntry: async (date: string) => {
+      return deleteDoc(doc(db, 'users', userId, collectionName, date))
+    },
+  }
+}
+
 export default function EditorScreen() {
+  const [user] = useAuthState(auth)
+  const entriesManager = EntriesManager(db, user, ENTRIES_COLLECTION)
+
   const [newEntryDate, setNewEntryDate] = useState<string | undefined>(
     undefined,
   )
@@ -57,8 +97,7 @@ export default function EditorScreen() {
     const formattedEntry = addBulletsToEntry(value)
 
     // updating the entry in the database
-    const entriesCollection = doc(db, ENTRIES_COLLECTION, date)
-    updateDoc(entriesCollection, { content: formattedEntry })
+    entriesManager.updateEntry(date, formattedEntry)
 
     // updating the entry in the local state
     setEntries((pastEntries) => {
@@ -67,7 +106,7 @@ export default function EditorScreen() {
   }
 
   async function handleDelete(date: string) {
-    await deleteDoc(doc(db, ENTRIES_COLLECTION, date))
+    await entriesManager.deleteEntry(date)
 
     setEntries((pastEntries) => {
       const newEntries = { ...pastEntries }
@@ -85,8 +124,7 @@ export default function EditorScreen() {
     const newContent = pastEntry ?? ''
 
     // adding the new entry to the database
-    const entriesCollection = doc(db, ENTRIES_COLLECTION, isoString)
-    setDoc(entriesCollection, { content: newContent })
+    entriesManager.addEntry(isoString, newContent)
 
     // adding the new entry to the local state
     setEntries((pastEntries) => {
@@ -160,7 +198,7 @@ export default function EditorScreen() {
               <textarea
                 value={value}
                 onChange={(e) => handleChange(e, date)}
-                className='min-h-[200px] w-full rounded border border-slate-200 p-4 text-lg leading-relaxed focus:outline-none'
+                className='min-h-[200px] w-full rounded border border-slate-200 p-4 leading-relaxed focus:outline-none'
                 style={{ height: `calc(${numberOfLines * 2}rem + 2rem)` }}
               />
             </div>
