@@ -1,20 +1,16 @@
 import { format } from 'date-fns'
 import type { User } from 'firebase/auth'
-import type {
+import {
+  deleteDoc,
+  doc,
   DocumentData,
   Firestore,
   QueryDocumentSnapshot,
-  SnapshotOptions,
-} from 'firebase/firestore'
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
   setDoc,
+  SnapshotOptions,
   updateDoc,
 } from 'firebase/firestore'
-import { ChangeEvent, useEffect, useState } from 'react'
+import { ChangeEvent, useState } from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 
 import { auth } from '@/lib/firebase/auth'
@@ -34,18 +30,18 @@ function addBulletsToEntry(entry: string) {
   return newEntry
 }
 
-const entryConverter = {
-  toFirestore: (entry: string) => {
-    return { content: entry }
-  },
-  fromFirestore: (
-    snapshot: QueryDocumentSnapshot<DocumentData>,
-    options: SnapshotOptions,
-  ) => {
-    const data = snapshot.data(options)
-    return data.content
-  },
-}
+// const entryConverter = {
+//   toFirestore: (entry: string) => {
+//     return { content: entry }
+//   },
+//   fromFirestore: (
+//     snapshot: QueryDocumentSnapshot<DocumentData>,
+//     options: SnapshotOptions,
+//   ) => {
+//     const data = snapshot.data(options)
+//     return data.content
+//   },
+// }
 
 const ENTRIES_COLLECTION = 'entries'
 
@@ -67,19 +63,30 @@ function EntriesManager(
 
   const userId = user.uid
 
-  return {
-    addEntry: async (date: string, content: string) => {
-      const entryDoc = doc(db, 'users', userId, collectionName, date)
-      return setDoc(entryDoc, { content: content })
-    },
-    updateEntry: async (date: string, content: string) => {
-      const entryDoc = doc(db, 'users', userId, collectionName, date)
-      return updateDoc(entryDoc, { content: content })
-    },
-    deleteEntry: async (date: string) => {
-      return deleteDoc(doc(db, 'users', userId, collectionName, date))
-    },
+  function getEntryDoc(date: string) {
+    return doc(db, 'users', userId, collectionName, date)
   }
+
+  async function addEntry(date: string, content: string) {
+    return setDoc(getEntryDoc(date), { content })
+  }
+
+  async function updateEntry(date: string, content: string) {
+    const entryDoc = getEntryDoc(date)
+    return updateDoc(entryDoc, { content: content }).catch((error) => {
+      if (error.code === 'not-found') {
+        addEntry(date, content)
+      } else {
+        console.log(error.code, ' => ', error.message)
+      }
+    })
+  }
+
+  async function deleteEntry(date: string) {
+    return deleteDoc(getEntryDoc(date))
+  }
+
+  return { addEntry, updateEntry, deleteEntry, getEntryDoc }
 }
 
 export default function EditorScreen() {
@@ -134,28 +141,26 @@ export default function EditorScreen() {
     setNewEntryDate(undefined)
   }
 
-  useEffect(() => {
-    let unsubscribe: () => void
-    async function getEntries() {
-      const q = await collection(db, ENTRIES_COLLECTION).withConverter(
-        entryConverter,
-      )
+  // useEffect(() => {
+  //   let unsubscribe: () => void
+  //   async function getEntries() {
+  //     const q = await collection(db, 'users', user?.uid, ENTRIES_COLLECTION)
 
-      unsubscribe = onSnapshot(q, (querySnapshot) => {
-        querySnapshot.forEach((doc) => {
-          const source = doc.metadata.hasPendingWrites ? 'Local' : 'Server'
+  //     unsubscribe = onSnapshot(q, (querySnapshot) => {
+  //       querySnapshot.forEach((doc) => {
+  //         const source = doc.metadata.hasPendingWrites ? 'Local' : 'Server'
 
-          console.log(source, ' || ', doc.id, ' => ', doc.data())
-        })
-      })
-    }
+  //         console.log(source, ' || ', doc.id, ' => ', doc.data())
+  //       })
+  //     })
+  //   }
 
-    getEntries()
+  //   getEntries()
 
-    return () => {
-      unsubscribe?.()
-    }
-  }, [])
+  //   return () => {
+  //     unsubscribe?.()
+  //   }
+  // }, [])
 
   const sortedEntries = Object.entries(entries ?? {}).sort(
     ([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime(),
@@ -194,6 +199,16 @@ export default function EditorScreen() {
                 </button>{' '}
                 {format(new Date(date), 'EEEE, MMMM do')}
               </div>
+
+              {/* <div>
+                <div
+                  contentEditable
+                  className='min-h-[36px] rounded border px-8 py-4 text-sm leading-relaxed text-slate-700 focus:outline-none [&>*]:list-item [&>*]:list-inside [&>*]:list-disc [&>*]:leading-relaxed'
+                  onInput={(e) => {
+                    console.log(e.target.innerText)
+                  }}
+                />
+              </div> */}
 
               <textarea
                 value={value}
