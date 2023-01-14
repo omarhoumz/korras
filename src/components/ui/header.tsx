@@ -34,22 +34,27 @@ export default function Header() {
             <div className='flex items-center gap-1'>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                className='h-7 w-7 rounded-full border'
+                className='h-7 w-7 rounded-full border dark:border-slate-400'
                 alt={user.displayName ?? ''}
                 src={user.photoURL ?? ''}
                 referrerPolicy='no-referrer'
               />
-              <span className='text-sm text-slate-700'>{user.displayName}</span>
+              <span className='text-sm text-slate-600 dark:text-slate-400'>
+                {user.displayName}
+              </span>
             </div>
 
-            <button onClick={handleSignOut} className='hover:text-blue-700'>
+            <button
+              onClick={handleSignOut}
+              className='hover:text-blue-700 dark:hover:text-blue-400'
+            >
               Sign out
             </button>
           </div>
         ) : (
           <div className='flex items-baseline gap-4'>
             <span
-              className='text-xs text-slate-600'
+              className='text-xs text-slate-600 dark:text-slate-400'
               title='Changes are saved to your browser, sign in to save on the cloud'
             >
               (Sign in to save changes)

@@ -142,10 +142,7 @@ export default function EditorScreen() {
         const newEntries: Entries = {}
 
         querySnapshot.forEach((doc) => {
-          const source = doc.metadata.hasPendingWrites ? 'Local' : 'Server'
-
-          console.log(source, ' || ', doc.id, ' => ', doc.data())
-
+          // #172b30
           newEntries[doc.id] = doc.data()
         })
 
@@ -172,7 +169,7 @@ export default function EditorScreen() {
             type='date'
             value={newEntryDate}
             onChange={(e) => setNewEntryDate(e.target.value)}
-            className='min-w-[300px] rounded border border-slate-200 px-3 py-2 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white'
+            className='dark-date-input min-w-[300px] rounded border border-slate-200 px-3 py-2 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white'
           />
 
           <button
