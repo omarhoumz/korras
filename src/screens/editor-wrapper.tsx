@@ -1,21 +1,23 @@
-import { format } from 'date-fns'
+import cx from 'classnames'
+import { format, isToday } from 'date-fns'
 import type { User } from 'firebase/auth'
 import {
+  collection,
   deleteDoc,
   doc,
   DocumentData,
   Firestore,
+  onSnapshot,
   QueryDocumentSnapshot,
   setDoc,
   SnapshotOptions,
   updateDoc,
 } from 'firebase/firestore'
-import { ChangeEvent, useState } from 'react'
+import { ChangeEvent, useEffect, useState } from 'react'
 import { useAuthState } from 'react-firebase-hooks/auth'
 
 import { auth } from '@/lib/firebase/auth'
 import { db } from '@/lib/firebase/db'
-import { useLocalStorage } from '@/lib/use-local-storage'
 
 type Entries = Record<string, string>
 
@@ -30,18 +32,18 @@ function addBulletsToEntry(entry: string) {
   return newEntry
 }
 
-// const entryConverter = {
-//   toFirestore: (entry: string) => {
-//     return { content: entry }
-//   },
-//   fromFirestore: (
-//     snapshot: QueryDocumentSnapshot<DocumentData>,
-//     options: SnapshotOptions,
-//   ) => {
-//     const data = snapshot.data(options)
-//     return data.content
-//   },
-// }
+const entryConverter = {
+  toFirestore: (entry: string) => {
+    return { content: entry }
+  },
+  fromFirestore: (
+    snapshot: QueryDocumentSnapshot<DocumentData>,
+    options: SnapshotOptions,
+  ) => {
+    const data = snapshot.data(options)
+    return data.content
+  },
+}
 
 const ENTRIES_COLLECTION = 'entries'
 
@@ -96,7 +98,8 @@ export default function EditorScreen() {
   const [newEntryDate, setNewEntryDate] = useState<string | undefined>(
     undefined,
   )
-  const [entries, setEntries] = useLocalStorage<Entries>('everything')
+
+  const [entriesFromDb, setEntriesFromDb] = useState<Entries>({})
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>, date: string) {
     // getting the value from the event and formatting it
@@ -105,21 +108,10 @@ export default function EditorScreen() {
 
     // updating the entry in the database
     entriesManager.updateEntry(date, formattedEntry)
-
-    // updating the entry in the local state
-    setEntries((pastEntries) => {
-      return { ...pastEntries, [date]: formattedEntry }
-    })
   }
 
   async function handleDelete(date: string) {
     await entriesManager.deleteEntry(date)
-
-    setEntries((pastEntries) => {
-      const newEntries = { ...pastEntries }
-      delete newEntries[date]
-      return newEntries
-    })
   }
 
   function handleAddEntry() {
@@ -127,42 +119,48 @@ export default function EditorScreen() {
 
     // getting the date in ISO format and content from the local state
     const isoString = new Date(newEntryDate).toISOString()
-    const pastEntry = entries[isoString]
+    const pastEntry = entriesFromDb[isoString]
     const newContent = pastEntry ?? ''
 
     // adding the new entry to the database
     entriesManager.addEntry(isoString, newContent)
 
-    // adding the new entry to the local state
-    setEntries((pastEntries) => {
-      return { ...pastEntries, [isoString]: newContent }
-    })
-
     setNewEntryDate(undefined)
   }
 
-  // useEffect(() => {
-  //   let unsubscribe: () => void
-  //   async function getEntries() {
-  //     const q = await collection(db, 'users', user?.uid, ENTRIES_COLLECTION)
+  useEffect(() => {
+    let unsubscribe: () => void
+    async function getEntries() {
+      const q = await collection(
+        db,
+        'users',
+        user?.uid ?? '',
+        ENTRIES_COLLECTION,
+      ).withConverter(entryConverter)
 
-  //     unsubscribe = onSnapshot(q, (querySnapshot) => {
-  //       querySnapshot.forEach((doc) => {
-  //         const source = doc.metadata.hasPendingWrites ? 'Local' : 'Server'
+      unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const newEntries: Entries = {}
 
-  //         console.log(source, ' || ', doc.id, ' => ', doc.data())
-  //       })
-  //     })
-  //   }
+        querySnapshot.forEach((doc) => {
+          const source = doc.metadata.hasPendingWrites ? 'Local' : 'Server'
 
-  //   getEntries()
+          console.log(source, ' || ', doc.id, ' => ', doc.data())
 
-  //   return () => {
-  //     unsubscribe?.()
-  //   }
-  // }, [])
+          newEntries[doc.id] = doc.data()
+        })
 
-  const sortedEntries = Object.entries(entries ?? {}).sort(
+        setEntriesFromDb(newEntries)
+      })
+    }
+
+    getEntries()
+
+    return () => {
+      unsubscribe?.()
+    }
+  }, [])
+
+  const sortedEntries = Object.entries(entriesFromDb ?? {}).sort(
     ([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime(),
   )
 
@@ -174,12 +172,13 @@ export default function EditorScreen() {
             type='date'
             value={newEntryDate}
             onChange={(e) => setNewEntryDate(e.target.value)}
-            className='min-w-[300px] rounded border border-slate-200 px-3 py-2 focus:outline-none'
+            className='min-w-[300px] rounded border border-slate-200 px-3 py-2 focus:outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white'
           />
+
           <button
             type='button'
             onClick={handleAddEntry}
-            className='ml-2 rounded border border-blue-200 bg-blue-600 px-4 py-2 text-white focus:outline-none'
+            className='ml-2 rounded border border-blue-200 bg-blue-600 px-4 py-2 text-white focus:outline-none dark:border-blue-400 dark:bg-blue-400 dark:text-slate-800'
           >
             Add entry
           </button>
@@ -192,7 +191,7 @@ export default function EditorScreen() {
             <div key={date}>
               <div className='pb-4 text-2xl font-medium'>
                 <button
-                  className='text-sm text-red-500'
+                  className='text-sm text-red-500 dark:text-red-400'
                   onClick={() => handleDelete(date)}
                 >
                   Delete
@@ -205,15 +204,20 @@ export default function EditorScreen() {
                   contentEditable
                   className='min-h-[36px] rounded border px-8 py-4 text-sm leading-relaxed text-slate-700 focus:outline-none [&>*]:list-item [&>*]:list-inside [&>*]:list-disc [&>*]:leading-relaxed'
                   onInput={(e) => {
-                    console.log(e.target.innerText)
+                    const input = e.target as HTMLElement
+
+                    console.log(input.innerText)
                   }}
-                />
+                ></div>
               </div> */}
 
               <textarea
                 value={value}
                 onChange={(e) => handleChange(e, date)}
-                className='min-h-[200px] w-full rounded border border-slate-200 p-4 leading-relaxed focus:outline-none'
+                className={cx(
+                  'w-full rounded border border-slate-200 bg-transparent p-4 leading-relaxed focus:outline-none dark:border-slate-600',
+                  { 'min-h-[400px]': isToday(new Date(date)) },
+                )}
                 style={{ height: `calc(${numberOfLines * 2}rem + 2rem)` }}
               />
             </div>

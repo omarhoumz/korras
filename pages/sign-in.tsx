@@ -9,6 +9,22 @@ import { auth } from '@/lib/firebase/auth'
 
 const provider = new GoogleAuthProvider()
 
+export default function SignInPage() {
+  return (
+    <>
+      <Head title='Sign in' />
+
+      <Header />
+
+      <main className='flex flex-col items-center gap-4 py-12'>
+        <h1 className='text-2xl font-semibold'>Sign in</h1>
+
+        <SignIn />
+      </main>
+    </>
+  )
+}
+
 const SignIn = () => {
   const [user, loading] = useAuthState(auth)
   const router = useRouter()
@@ -42,55 +58,23 @@ const SignIn = () => {
   }
 
   if (loading) {
-    return (
-      <>
-        <Head title='Sign in' />
-
-        <Header />
-
-        <main className='flex flex-col items-center gap-4 py-12'>
-          <h1 className='text-2xl font-semibold'>Sign in</h1>
-          <p>Loading ...</p>
-        </main>
-      </>
-    )
+    return <p>Loading ...</p>
   }
 
   if (user) {
     router.push('/')
 
-    return (
-      <>
-        <Head title='Sign in' />
-
-        <Header />
-
-        <main className='flex flex-col items-center gap-4 py-12'>
-          <h1 className='text-2xl font-semibold'>Sign in</h1>
-          <p>Already signed in</p>
-        </main>
-      </>
-    )
+    return <p>Already signed in</p>
   }
 
   return (
     <>
-      <Head title='Sign in' />
-
-      <Header />
-
-      <main className='flex flex-col items-center gap-4 py-12'>
-        <h1 className='text-2xl font-semibold'>Sign in</h1>
-
-        <button
-          className='rounded bg-blue-600 px-4 py-2 text-white'
-          onClick={signInWithGooglePopup}
-        >
-          Sign in with google
-        </button>
-      </main>
+      <button
+        className='rounded bg-blue-600 px-4 py-2 text-white'
+        onClick={signInWithGooglePopup}
+      >
+        Sign in with google
+      </button>
     </>
   )
 }
-
-export default SignIn

@@ -37,6 +37,7 @@ export default function Header() {
                 className='h-7 w-7 rounded-full border'
                 alt={user.displayName ?? ''}
                 src={user.photoURL ?? ''}
+                referrerPolicy='no-referrer'
               />
               <span className='text-sm text-slate-700'>{user.displayName}</span>
             </div>
