@@ -212,7 +212,7 @@ export default function EditorScreen() {
                 value={value}
                 onChange={(e) => handleChange(e, date)}
                 className={cx(
-                  'w-full rounded border border-slate-200 bg-transparent p-4 leading-relaxed focus:outline-none dark:border-slate-600',
+                  'w-full border-l-2 border-slate-100 bg-transparent p-4 leading-relaxed focus:outline-none dark:border-slate-700',
                   { 'min-h-[400px]': isToday(new Date(date)) },
                 )}
                 style={{ height: `calc(${numberOfLines * 2}rem + 2rem)` }}
